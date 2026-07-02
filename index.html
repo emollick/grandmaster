@@ -1,0 +1,1407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board №7 — DeepFish 17, Public Exhibition</title>
+<style>
+:root{
+  --bg:#0b0e13; --panel:#11161ecc; --line:#2a3342; --gold:#d4af37; --gold2:#f3d27a;
+  --ivory:#f2ead8; --ink:#c9d2e0; --dim:#7f8ba0; --red:#a3242e; --green:#3fae6a;
+  --sq-l:#ecd9b3; --sq-d:#a97a4f; --mono:"Cascadia Mono","Consolas",monospace;
+  --serif:Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  background:radial-gradient(1200px 700px at 50% -10%, #182031 0%, var(--bg) 55%) fixed, var(--bg);
+  color:var(--ink); font-family:var(--serif); overflow-x:hidden;
+}
+button{font-family:inherit; cursor:pointer}
+
+/* ---------- chyron ---------- */
+#chyron{
+  display:flex; align-items:center; gap:14px; padding:7px 14px;
+  background:linear-gradient(180deg,#171c26,#0d1118); border-bottom:1px solid var(--line);
+  font-size:13px; letter-spacing:.06em; position:sticky; top:0; z-index:40; white-space:nowrap; overflow:hidden;
+}
+#chyron .live{color:#fff; background:var(--red); padding:2px 8px; border-radius:3px; font-weight:bold; font-size:11px; letter-spacing:.14em; animation:pulse 1.6s infinite}
+#chyron .ev{color:var(--gold2); font-variant:small-caps; letter-spacing:.12em}
+#chyron .tick{color:var(--dim); overflow:hidden; flex:1; min-width:0}
+#chyron .tick span{display:inline-block; padding-left:100%; animation:marquee 26s linear infinite}
+#eyes{color:var(--dim); font-family:var(--mono); font-size:11px; text-align:center}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ---------- layout ---------- */
+#stage{
+  display:grid; grid-template-columns:240px minmax(340px,1fr) 340px; gap:16px;
+  max-width:1280px; margin:14px auto; padding:0 14px; align-items:start;
+}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; backdrop-filter:blur(3px)}
+.panel h3{font-size:11px; letter-spacing:.22em; color:var(--dim); font-variant:small-caps; margin-bottom:8px; font-weight:normal}
+.hidden{display:none !important}
+.reveal{animation:panelin .9s cubic-bezier(.2,.9,.3,1)}
+@keyframes panelin{from{opacity:0; transform:translateY(-10px)}to{opacity:1; transform:none}}
+@media (max-width:1020px){
+  #stage{grid-template-columns:1fr; max-width:720px}
+  #left{order:2} #center{order:1} #right{order:3}
+  #left{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  #left .panel{margin-bottom:0}
+}
+@media (max-width:560px){ #left{grid-template-columns:1fr} }
+
+/* ---------- left column ---------- */
+#left .panel{margin-bottom:12px}
+.playercard .name{font-size:17px; color:var(--ivory)}
+.playercard .title-chip{display:inline-block; background:#2a2313; color:var(--gold2); border:1px solid #5b4c1c; font-size:10px; letter-spacing:.12em; padding:1px 7px; border-radius:3px; margin-right:6px; vertical-align:2px; transition:all .4s}
+.playercard .elo{font-family:var(--mono); font-size:22px; color:var(--gold2); margin-top:2px}
+.playercard .elo small{color:var(--dim); font-size:11px}
+.playercard .clock{font-family:var(--mono); font-size:15px; color:var(--ink); margin-top:4px}
+.playercard.engine .name{color:#9fb2cc}
+.playercard.engine .elo{color:#9fb2cc}
+.playercard .sub{color:var(--dim); font-size:11.5px; margin-top:3px; font-style:italic; min-height:15px}
+.captures{font-size:19px; letter-spacing:2px; min-height:24px; margin-top:5px; color:var(--ivory)}
+.captures.b{color:#8d9cb5}
+#evalwrap{display:flex; gap:10px; align-items:stretch}
+#evalbar{width:16px; height:180px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#141922; position:relative; align-self:center}
+#evalfill{position:absolute; bottom:0; left:0; right:0; height:50%; background:linear-gradient(180deg,#fdf6e3,#d9cba4); transition:height 1.1s cubic-bezier(.2,.7,.2,1)}
+#evalnum{font-family:var(--mono); font-size:18px; color:var(--gold2)}
+#evaltxt{font-size:11.5px; color:var(--dim); font-style:italic; margin-top:4px}
+.btnrow{display:flex; flex-wrap:wrap; gap:7px}
+.btnrow button{
+  background:#1a2130; border:1px solid var(--line); color:var(--ink);
+  padding:6px 10px; border-radius:7px; font-size:12px;
+}
+.btnrow button:hover{border-color:var(--gold); color:var(--gold2)}
+
+/* ---------- board ---------- */
+#center{display:flex; flex-direction:column; align-items:center; gap:10px}
+#matchline{font-variant:small-caps; letter-spacing:.28em; color:var(--dim); font-size:12px; text-align:center}
+#matchline b{color:var(--gold2); font-weight:normal}
+#boardframe{position:relative; padding:22px 8px 8px 24px}
+#board{
+  display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+  width:min(86vw, 62vmin, 620px); aspect-ratio:1/1; border:3px solid #43331f; border-radius:4px;
+  box-shadow:0 18px 50px #000a, inset 0 0 0 1px #00000055; position:relative;
+}
+.sq{position:relative; display:flex; align-items:center; justify-content:center; user-select:none}
+.sq.l{background:var(--sq-l)} .sq.d{background:var(--sq-d)}
+.sq .pc{
+  font-size:calc(min(86vw, 62vmin, 620px)/8*.78); line-height:1; z-index:2; pointer-events:none;
+  transition:transform .2s;
+}
+.pc.w{color:#f7f1df; text-shadow:0 1px 0 #7c6a4a, 0 2px 3px #0009}
+.pc.b{color:#20242e; text-shadow:0 1px 0 #00000088, 0 1px 2px #0006, 0 0 1px #cbd5e455}
+.sq.movable{cursor:pointer}
+.sq.movable::before{content:""; position:absolute; inset:6%; border-radius:10%; box-shadow:0 0 0 2px #d4af3766, 0 0 14px #d4af3733; animation:breathe 2.2s infinite}
+.sq.sel{outline:3px solid var(--gold); outline-offset:-3px; z-index:3}
+.sq.dest{cursor:pointer}
+.sq.dest::after{content:""; position:absolute; width:26%; height:26%; border-radius:50%; background:#2c9c5baa; box-shadow:0 0 10px #2c9c5b88; z-index:1}
+.sq.dest.take::after{width:88%; height:88%; background:none; border:4px solid #c8433bcc; box-shadow:0 0 12px #c8433b66}
+.sq.lastmove{box-shadow:inset 0 0 0 100vmax #d4af3730}
+.sq.enemymove{box-shadow:inset 0 0 0 100vmax #a3242e2e}
+.sq.intuit::before{content:""; position:absolute; inset:2%; border-radius:12%; box-shadow:0 0 0 3px var(--gold2), 0 0 22px #f3d27a99; animation:breathe 1.1s infinite; z-index:4; pointer-events:none}
+.sq.checked{animation:checkflash .5s 3}
+@keyframes breathe{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes checkflash{0%,100%{box-shadow:inset 0 0 0 100vmax #a3242e00}50%{box-shadow:inset 0 0 0 100vmax #a3242e88}}
+.coord{position:absolute; font-family:var(--mono); font-size:11px; color:#6b7891; letter-spacing:0}
+.coord.f{bottom:-16px} .coord.r{left:-16px}
+#ghosts{position:absolute; inset:0; pointer-events:none; z-index:9}
+#ghosts .pc{position:absolute; transition:transform .26s cubic-bezier(.3,.8,.3,1); margin:0}
+#arrowlayer{position:absolute; inset:0; pointer-events:none; z-index:8}
+#turnhint{color:var(--dim); font-size:12.5px; font-style:italic; min-height:17px; text-align:center}
+.tipping{transform:rotate(78deg) translateY(8%); transition:transform 1.4s cubic-bezier(.6,0,.9,.4) !important; transform-origin:60% 90%}
+
+/* hover tooltip */
+#hovertip{
+  position:fixed; z-index:60; pointer-events:none; display:none;
+  background:#0d1118f2; border:1px solid #5b4c1c; color:var(--gold2);
+  font-family:var(--mono); font-size:12px; padding:5px 9px; border-radius:6px; box-shadow:0 6px 18px #000a;
+}
+#hovertip small{color:var(--dim); display:block; font-family:var(--serif); font-style:italic}
+
+/* ---------- right column ---------- */
+#right{display:flex; flex-direction:column; gap:12px}
+#feed{max-height:330px; overflow-y:auto; scrollbar-width:thin; display:flex; flex-direction:column; gap:8px}
+.msg{font-size:13.5px; line-height:1.45; animation:fadein .5s}
+.msg .who{display:inline-block; font-size:10px; letter-spacing:.1em; padding:1px 7px; border-radius:3px; margin-right:7px; vertical-align:1px; font-variant:small-caps}
+.who.a{background:#22304a; color:#9cc0f0}   /* commentator dry */
+.who.b{background:#402039; color:#f0a8d8}   /* commentator hype */
+.who.arb{background:#2e2a1a; color:#e8d48a} /* arbiter */
+.who.world{background:#1d3324; color:#93d9a8} /* the world reacts */
+.msg.flash{color:var(--gold2)}
+@keyframes fadein{from{opacity:0; transform:translateY(-4px)}to{opacity:1}}
+#enginepanel{font-family:var(--mono); font-size:11.8px; line-height:1.55; color:#8fd0a8; background:#0a0f0d; border:1px solid #1d3324; border-radius:8px; padding:9px 11px; height:150px; overflow-y:auto; scrollbar-width:thin}
+#enginepanel .sys{color:#57856b}
+#enginepanel .bad{color:#e0876f}
+#enginepanel .head{color:#a5e8c0}
+#movelist{font-family:var(--mono); font-size:13px; max-height:150px; overflow-y:auto; scrollbar-width:thin; display:grid; grid-template-columns:auto 1fr 1fr; gap:2px 10px}
+#movelist .n{color:var(--dim)} #movelist .w{color:var(--ivory)} #movelist .bm{color:#93a5c2}
+#movelist .badge{color:var(--gold2)}
+
+/* ---------- banners ---------- */
+#bannerwrap{position:fixed; top:16%; left:0; right:0; display:flex; justify-content:center; z-index:70; pointer-events:none}
+.banner{
+  background:linear-gradient(180deg,#171c26f5,#0d1118f5); border:1px solid var(--gold);
+  border-radius:10px; padding:16px 34px; text-align:center; box-shadow:0 20px 60px #000c, 0 0 40px #d4af3722;
+  animation:bannerin .45s cubic-bezier(.2,1.4,.3,1);
+}
+.banner .big{font-size:26px; letter-spacing:.18em; color:var(--gold2); font-variant:small-caps}
+.banner .small{font-size:13px; color:var(--ink); margin-top:6px; font-style:italic}
+.banner.grave{border-color:#5a6a85}
+.banner.grave .big{color:#c3d2ea}
+@keyframes bannerin{from{transform:scale(.7); opacity:0}to{transform:scale(1); opacity:1}}
+
+/* ---------- intro ---------- */
+#intro{position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(900px 600px at 50% 30%, #1a2334 0%, #07090d 70%)}
+#intro .card{max-width:560px; width:92%; text-align:center; padding:30px 26px}
+#intro .crest{font-size:56px; color:var(--gold2); text-shadow:0 0 40px #d4af3755}
+#intro h1{font-size:15px; letter-spacing:.42em; color:var(--dim); font-variant:small-caps; font-weight:normal; margin-top:8px}
+#intro h2{font-size:34px; color:var(--ivory); letter-spacing:.06em; margin:10px 0 4px; font-weight:normal}
+#intro .score{color:var(--gold2); font-size:15px; letter-spacing:.3em; font-variant:small-caps}
+#intro .vs{margin:22px 0 6px; font-size:14.5px; line-height:1.75; color:var(--ink)}
+#intro .vs b{color:#9fb2cc; font-weight:normal}
+#intro .vs .stat{font-family:var(--mono); font-size:12.5px; color:var(--dim)}
+#intro input{
+  margin-top:18px; width:76%; padding:10px 14px; text-align:center; font-family:var(--serif); font-size:16px;
+  background:#0d1118; color:var(--ivory); border:1px solid var(--line); border-radius:8px; outline:none;
+}
+#intro input:focus{border-color:var(--gold)}
+#btn-begin{
+  margin-top:16px; padding:13px 40px; font-size:15px; letter-spacing:.24em; font-variant:small-caps;
+  background:linear-gradient(180deg,#d4af37,#a9822a); color:#14100a; border:none; border-radius:8px; font-weight:bold;
+}
+#btn-begin:hover{filter:brightness(1.1)}
+#intro .fine{margin-top:16px; font-size:12.5px; color:var(--dim); font-style:italic; line-height:1.6}
+#intro .patch{margin-top:10px; font-family:var(--mono); font-size:11px; color:#57856b}
+
+/* ---------- end modal ---------- */
+#endmodal{position:fixed; inset:0; z-index:90; display:none; align-items:center; justify-content:center; background:#05070acc; overflow-y:auto; padding:20px 0}
+#endmodal .card{max-width:600px; width:94%; background:linear-gradient(180deg,#161c28,#0d1118); border:1px solid var(--gold); border-radius:14px; padding:26px 28px; box-shadow:0 30px 90px #000}
+#endmodal h2{color:var(--gold2); font-variant:small-caps; letter-spacing:.14em; font-weight:normal; font-size:24px; text-align:center}
+#endmodal .sub{text-align:center; color:var(--dim); font-style:italic; margin:4px 0 14px; font-size:13px}
+#sparkwrap{text-align:center; margin:8px 0 4px}
+#sparkcap{font-size:10.5px; color:var(--dim); letter-spacing:.16em; font-variant:small-caps}
+.stats{display:grid; grid-template-columns:1fr 1fr; gap:7px 18px; margin:14px 0; font-size:13.5px}
+.stats .k{color:var(--dim)} .stats .v{color:var(--ivory); text-align:right; font-family:var(--mono); font-size:12.5px}
+.stats .v.gold{color:var(--gold2)}
+#endmodal .ps{font-size:12.5px; color:var(--dim); font-style:italic; border-top:1px solid var(--line); padding-top:12px; margin-top:6px; line-height:1.6}
+#endmodal .btnrow{margin-top:14px; justify-content:center}
+#endmodal .btnrow button.gold{background:linear-gradient(180deg,#d4af37,#a9822a); color:#14100a; border:none; font-weight:bold}
+
+/* settings modal */
+#setmodal{position:fixed; inset:0; z-index:95; display:none; align-items:center; justify-content:center; background:#05070acc}
+#setmodal .card{max-width:440px; width:92%; background:#0f141d; border:1px solid var(--line); border-radius:12px; padding:20px 22px}
+#setmodal h2{font-size:14px; letter-spacing:.24em; font-variant:small-caps; color:var(--dim); font-weight:normal; margin-bottom:12px}
+.setrow{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #1a2130; font-size:13.5px}
+.setrow .lab{color:var(--ink)} .setrow .val{color:var(--dim); font-size:12px; font-style:italic; text-align:right}
+.setrow .val.lock::before{content:"🔒 "; font-style:normal; font-size:10px}
+.setrow button{background:#1a2130; border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:4px 10px; font-size:12px}
+
+#confetti{position:fixed; inset:0; z-index:85; pointer-events:none}
+footer{max-width:1280px; margin:6px auto 26px; padding:0 16px; color:#4d586e; font-size:11px; font-style:italic; text-align:center}
+</style>
+</head>
+<body>
+
+<div id="chyron" class="hidden">
+  <span class="live">● LIVE</span>
+  <span class="ev">Board №7 · open challenge</span>
+  <div class="tick"><span id="ticker">Board №7 · DeepFish 17 · accepts all challengers …</span></div>
+</div>
+
+<main id="stage">
+  <section id="left">
+    <div class="panel playercard engine">
+      <h3>Black</h3>
+      <div class="name" id="engname">DeepFish 17</div>
+      <div class="elo">4012 <small>undefeated · 2,847,391 games</small></div>
+      <div class="clock" id="engclock">1:30:00</div>
+      <div class="sub" id="engmood">ready. confident. polite about it.</div>
+      <div class="captures b" id="engcaps"></div>
+    </div>
+
+    <div class="panel hidden" id="evalwrap">
+      <div id="evalbar"><div id="evalfill"></div></div>
+      <div>
+        <h3>Evaluation</h3>
+        <div id="evalnum">+0.2</div>
+        <div id="evaltxt">equal, officially</div>
+      </div>
+    </div>
+
+    <div class="panel playercard">
+      <h3>White</h3>
+      <div class="name"><span class="title-chip" id="ptitle">UNTITLED</span><span id="pname">The Challenger</span></div>
+      <div class="elo" id="pelo">unrated <small>no games on file</small></div>
+      <div class="clock" id="pclock">1:30:00</div>
+      <div class="captures" id="pcaps"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Match Controls</h3>
+      <div class="btnrow">
+        <button id="btn-draw">Offer draw</button>
+        <button id="btn-resign">Resign</button>
+        <button id="btn-settings">Settings</button>
+        <button id="btn-sound">🔊</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="center">
+    <div id="matchline">PUBLIC BOARD №7 · <b>DeepFish 17</b> · accepts all challengers</div>
+    <div id="eyes" class="hidden">👁 3 watching</div>
+    <div id="boardframe">
+      <div id="board"></div>
+      <svg id="arrowlayer"></svg>
+      <div id="ghosts"></div>
+    </div>
+    <div id="turnhint"></div>
+  </section>
+
+  <section id="right">
+    <div class="panel">
+      <h3 id="feedh">Game Log</h3>
+      <div id="feed"></div>
+    </div>
+    <div class="panel hidden" id="engwrap">
+      <h3>DeepFish 17 — internal state <span style="float:right;color:#3f5a4b">[leaked]</span></h3>
+      <div id="enginepanel"></div>
+    </div>
+    <div class="panel">
+      <h3>Notation</h3>
+      <div id="movelist"></div>
+    </div>
+  </section>
+</main>
+
+<footer>All moves on this broadcast are legal chess, recorded in standard algebraic notation. The only simulation is DeepFish's confidence.</footer>
+
+<div id="hovertip"></div>
+<div id="bannerwrap"></div>
+
+<div id="intro">
+  <div class="card panel">
+    <div class="crest">♟</div>
+    <h1>Public Exhibition · Board №7</h1>
+    <h2>DEEPFISH 17</h2>
+    <div class="score">rating 4012 · 2,847,391 games · no losses</div>
+    <div class="vs">
+      A chess engine on an open board. It plays anyone.<br>
+      It has never lost. Most people have stopped trying.<br>
+      <span class="stat">queue to play: empty</span>
+    </div>
+    <input id="namein" type="text" maxlength="24" placeholder="your name" autocomplete="off">
+    <br><button id="btn-begin">Challenge DeepFish</button>
+    <div class="fine">You don't need to know the rules — your legal moves will glow.<br>Pick whichever feels right.</div>
+    <div class="patch" id="patchnotes"></div>
+  </div>
+</div>
+
+<div id="endmodal"><div class="card">
+  <h2 id="endtitle">1 – 0</h2>
+  <div class="sub" id="endsub"></div>
+  <div id="sparkwrap"><svg id="spark" width="360" height="70"></svg><div id="sparkcap">advantage (you) — by move</div></div>
+  <div class="stats" id="endstats"></div>
+  <div class="ps" id="endps"></div>
+  <div class="btnrow">
+    <button id="btn-pgn" class="">Download PGN</button>
+    <button id="btn-copy">Copy PGN</button>
+    <button id="btn-study">Study the masterpiece</button>
+    <button id="btn-rematch" class="gold">Rematch</button>
+  </div>
+</div></div>
+
+<div id="setmodal"><div class="card">
+  <h2>Tournament Settings</h2>
+  <div class="setrow"><span class="lab">Difficulty</span><span class="val lock">Impossible (for the engine)</span></div>
+  <div class="setrow"><span class="lab">Hints</span><span class="val lock">unnecessary</span></div>
+  <div class="setrow"><span class="lab">Takebacks</span><span class="val lock">DeepFish has requested 14 — denied</span></div>
+  <div class="setrow"><span class="lab">Play as Black</span><span class="val lock">DeepFish declines to take White against you</span></div>
+  <div class="setrow"><span class="lab">Flip board</span><span class="val lock">you will remain on the winning side</span></div>
+  <div class="setrow"><span class="lab">Opening book</span><span class="val lock">position not found — you are the book now</span></div>
+  <div class="setrow"><span class="lab">Sound</span><button id="btn-sound2">toggle</button></div>
+  <div class="setrow"><span class="lab">Board wood</span><button id="btn-theme">walnut / marble / tournament</button></div>
+  <div class="btnrow" style="margin-top:14px; justify-content:center"><button id="btn-set-close">Return to the board</button></div>
+</div></div>
+
+<canvas id="confetti"></canvas>
+
+<script id="engine">
+/* ======================= REAL CHESS. mailbox-120, copy-make. ======================= */
+const OFF='x', WP='wP',WN='wN',WB='wB',WR='wR',WQ='wQ',WK='wK',BP='bP',BN='bN',BB='bB',BR='bR',BQ='bQ',BK='bK';
+const KN=[-21,-19,-12,-8,8,12,19,21], KG=[-11,-10,-9,-1,1,9,10,11], BI=[-11,-9,9,11], RO=[-10,-1,1,10];
+const VAL={P:1,N:3,B:3,R:5,Q:9,K:0};
+function emptyBoard(){const b=new Array(120).fill(OFF);for(let r=0;r<8;r++)for(let f=0;f<8;f++)b[21+r*10+f]=null;return b;}
+function initialState(){
+  const b=emptyBoard(), back=['R','N','B','Q','K','B','N','R'];
+  for(let f=0;f<8;f++){b[21+f]='b'+back[f];b[31+f]=BP;b[81+f]=WP;b[91+f]='w'+back[f];}
+  return {b,turn:'w',castle:{wK:true,wQ:true,bK:true,bQ:true},ep:null,half:0,full:1};
+}
+function parseFEN(fen){
+  const [pos,turn,cas,ep]=fen.trim().split(/\s+/);
+  const b=emptyBoard(); let sq=21;
+  for(const ch of pos){
+    if(ch==='/'){sq=21+10*Math.ceil((sq-21)/10);continue;}
+    if(/\d/.test(ch)){sq+=+ch;continue;}
+    b[sq++]=(ch===ch.toUpperCase()?'w':'b')+ch.toUpperCase();
+  }
+  return {b,turn:turn||'w',
+    castle:{wK:(cas||'').includes('K'),wQ:(cas||'').includes('Q'),bK:(cas||'').includes('k'),bQ:(cas||'').includes('q')},
+    ep:(ep&&ep!=='-')?parseSq(ep):null,half:0,full:1};
+}
+function sqName(i){return String.fromCharCode(97+(i%10)-1)+(8-Math.floor((i-21)/10));}
+function parseSq(s){return 21+(8-+s[1])*10+(s.charCodeAt(0)-97);}
+function fileOf(i){return (i%10)-1;} function rankOf(i){return 8-Math.floor((i-21)/10);}
+function isAttacked(st,sq,by){
+  const b=st.b;
+  if(by==='w'){if(b[sq+9]===WP||b[sq+11]===WP)return true;}
+  else{if(b[sq-9]===BP||b[sq-11]===BP)return true;}
+  for(const o of KN)if(b[sq+o]===by+'N')return true;
+  for(const o of KG)if(b[sq+o]===by+'K')return true;
+  for(const d of BI){let t=sq+d;while(b[t]===null)t+=d;const p=b[t];if(p!==OFF&&p!==undefined&&p[0]===by&&(p[1]==='B'||p[1]==='Q'))return true;}
+  for(const d of RO){let t=sq+d;while(b[t]===null)t+=d;const p=b[t];if(p!==OFF&&p!==undefined&&p[0]===by&&(p[1]==='R'||p[1]==='Q'))return true;}
+  return false;
+}
+function kingSq(st,c){for(let i=21;i<99;i++)if(st.b[i]===c+'K')return i;return -1;}
+function genPseudo(st){
+  const b=st.b, us=st.turn, them=us==='w'?'b':'w', ms=[];
+  const add=(from,to,flags)=>ms.push(Object.assign({from,to,piece:b[from],capt:b[to],promo:null,ep:false,castle:null,double:false},flags||{}));
+  for(let from=21;from<99;from++){
+    const p=b[from]; if(!p||p===OFF||p[0]!==us)continue;
+    const t=p[1];
+    if(t==='P'){
+      const dir=us==='w'?-10:10, startRow=us==='w'?8:3, promoRank=us==='w'?8:1;
+      const row=Math.floor((from-21)/10)+1; // 1..8 from top
+      const one=from+dir;
+      if(b[one]===null){
+        if(rankOf(one)===promoRank){for(const pr of ['Q','R','B','N'])add(from,one,{promo:pr});}
+        else add(from,one);
+        const startOK=(us==='w'&&row===7)||(us==='b'&&row===2);
+        if(startOK&&b[from+2*dir]===null)add(from,from+2*dir,{double:true});
+      }
+      for(const dd of [dir-1,dir+1]){
+        const to=from+dd, q=b[to];
+        if(q&&q!==OFF&&q[0]===them){
+          if(rankOf(to)===promoRank){for(const pr of ['Q','R','B','N'])add(from,to,{promo:pr});}
+          else add(from,to);
+        } else if(st.ep!==null&&to===st.ep){
+          add(from,to,{ep:true,capt:them+'P'});
+        }
+      }
+    } else if(t==='N'||t==='K'){
+      for(const o of (t==='N'?KN:KG)){
+        const to=from+o, q=b[to];
+        if(q===OFF||q===undefined)continue;
+        if(q===null||q[0]===them)add(from,to);
+      }
+      if(t==='K'){
+        if(us==='w'&&from===95){
+          if(st.castle.wK&&b[96]===null&&b[97]===null&&b[98]===WR&&!isAttacked(st,95,'b')&&!isAttacked(st,96,'b')&&!isAttacked(st,97,'b'))add(95,97,{castle:'K'});
+          if(st.castle.wQ&&b[94]===null&&b[93]===null&&b[92]===null&&b[91]===WR&&!isAttacked(st,95,'b')&&!isAttacked(st,94,'b')&&!isAttacked(st,93,'b'))add(95,93,{castle:'Q'});
+        }
+        if(us==='b'&&from===25){
+          if(st.castle.bK&&b[26]===null&&b[27]===null&&b[28]===BR&&!isAttacked(st,25,'w')&&!isAttacked(st,26,'w')&&!isAttacked(st,27,'w'))add(25,27,{castle:'K'});
+          if(st.castle.bQ&&b[24]===null&&b[23]===null&&b[22]===null&&b[21]===BR&&!isAttacked(st,25,'w')&&!isAttacked(st,24,'w')&&!isAttacked(st,23,'w'))add(25,23,{castle:'Q'});
+        }
+      }
+    } else {
+      const dirs=t==='B'?BI:t==='R'?RO:KG;
+      for(const d of dirs){
+        let to=from+d;
+        while(b[to]===null){add(from,to);to+=d;}
+        const q=b[to];
+        if(q!==OFF&&q!==undefined&&q[0]===them)add(from,to);
+      }
+    }
+  }
+  return ms;
+}
+function apply(st,m){
+  const b=st.b.slice(), us=st.turn, them=us==='w'?'b':'w';
+  const castle={...st.castle};
+  b[m.to]=m.promo?us+m.promo:b[m.from]; b[m.from]=null;
+  if(m.ep)b[m.to+(us==='w'?10:-10)]=null;
+  if(m.castle==='K'){if(us==='w'){b[96]=WR;b[98]=null;}else{b[26]=BR;b[28]=null;}}
+  if(m.castle==='Q'){if(us==='w'){b[94]=WR;b[91]=null;}else{b[24]=BR;b[21]=null;}}
+  if(m.piece===WK){castle.wK=castle.wQ=false;} if(m.piece===BK){castle.bK=castle.bQ=false;}
+  for(const s of [m.from,m.to]){
+    if(s===98)castle.wK=false; if(s===91)castle.wQ=false;
+    if(s===28)castle.bK=false; if(s===21)castle.bQ=false;
+  }
+  return {b,turn:them,castle,
+    ep:m.double?(m.from+m.to)/2:null,
+    half:(m.capt||m.piece[1]==='P')?0:st.half+1,
+    full:us==='b'?st.full+1:st.full};
+}
+function legalMoves(st){
+  const us=st.turn, them=us==='w'?'b':'w';
+  return genPseudo(st).filter(m=>{const n=apply(st,m);return !isAttacked(n,kingSq(n,us),them);});
+}
+function inCheck(st){return isAttacked(st,kingSq(st,st.turn),st.turn==='w'?'b':'w');}
+function san(st,m,legal){
+  legal=legal||legalMoves(st);
+  let s;
+  if(m.castle)s=m.castle==='K'?'O-O':'O-O-O';
+  else if(m.piece[1]==='P'){
+    s=(m.capt?String.fromCharCode(97+fileOf(m.from))+'x':'')+sqName(m.to)+(m.promo?'='+m.promo:'');
+  } else {
+    const others=legal.filter(o=>o.piece===m.piece&&o.to===m.to&&o.from!==m.from);
+    let dis='';
+    if(others.length){
+      const sameFile=others.some(o=>fileOf(o.from)===fileOf(m.from));
+      const sameRank=others.some(o=>rankOf(o.from)===rankOf(m.from));
+      if(!sameFile)dis=String.fromCharCode(97+fileOf(m.from));
+      else if(!sameRank)dis=''+rankOf(m.from);
+      else dis=String.fromCharCode(97+fileOf(m.from))+rankOf(m.from);
+    }
+    s=m.piece[1]+dis+(m.capt?'x':'')+sqName(m.to);
+  }
+  const n=apply(st,m);
+  if(inCheck(n))s+=legalMoves(n).length?'+':'#';
+  return s;
+}
+function perft(st,d){
+  if(d===0)return 1;
+  let n=0;
+  for(const m of legalMoves(st))n+=perft(apply(st,m),d-1);
+  return n;
+}
+if(typeof module!=='undefined')module.exports={initialState,parseFEN,legalMoves,apply,san,perft,inCheck,sqName,parseSq,isAttacked,kingSq,VAL,fileOf,rankOf};
+</script>
+
+<script>
+/* ============================== THE BROADCAST ============================== */
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const FAST=/[?&]fast/.test(location.search);
+const GLYPH={P:'♟',N:'♞',B:'♝',R:'♜',Q:'♛',K:'♚'};
+const PIECENAME={P:'pawn',N:'knight',B:'bishop',R:'rook',Q:'queen',K:'king'};
+
+/* ---------- persistent career ---------- */
+let career={wins:0,ver:0};
+try{const c=JSON.parse(localStorage.getItem('gm7-career'));if(c&&typeof c.wins==='number')career=c;}catch(e){}
+function saveCareer(){try{localStorage.setItem('gm7-career',JSON.stringify(career));}catch(e){}}
+
+/* ---------- no-repeat random pickers ---------- */
+function pooler(arr){let bag=[];return()=>{if(!bag.length)bag=arr.map((_,i)=>i).sort(()=>Math.random()-.5);return arr[bag.pop()];};}
+const R=(a,b)=>a+Math.random()*(b-a);
+const RI=(a,b)=>Math.floor(R(a,b+1));
+
+/* =============================== SCRIPT BIBLE ===============================
+   Voice rule: every line must be something a witty human broadcaster,
+   a real arbiter, or a real engine log could plausibly produce. */
+
+const OPENING_NAMES={
+ 'e4':"King's Pawn Opening",'d4':"Queen's Pawn Opening",'c4':"the English Opening",
+ 'Nf3':"the Réti Opening",'b3':"the Nimzo-Larsen Attack",'g3':"the King's Fianchetto",
+ 'f4':"Bird's Opening",'b4':"the Orangutan",'g4':"the Grob",'f3':"the Barnes Opening",
+ 'a4':"the Ware Opening",'h4':"the Kádas Opening",'Nc3':"the Van Geet",'Na3':"the Sodium Attack",
+ 'Nh3':"the Amar Opening",'e3':"the Van 't Kruijs",'d3':"the Mieses Opening",'c3':"the Saragossa",
+ 'a3':"Anderssen's Opening",'h3':"the Clemenz Opening"
+};
+const OPENING_LINES={
+ 'e4':"1.e4 — “best by test,” Fischer called it, in this very city. Fifty years later somebody finally took him up on it.",
+ 'd4':"1.d4, the Queen's Pawn. Capablanca built a career on quiet strength. This game opened the same way. Note the word 'opened'.",
+ 'c4':"1.c4, the English. Patient, positional — the choice of a player who has already decided how the game ends.",
+ 'Nf3':"1.Nf3, the Réti. Control the center from a distance first, occupy it later. Everything tonight arrived in that order, including the audience.",
+ 'b3':"1.b3, the Nimzo-Larsen. Bent Larsen beat world champions with it and nobody copied him, because nobody else could make it work. Note the word 'nobody'.",
+ 'g3':"1.g3 — the quiet fianchetto. A system for players who intend to win slowly, inevitably, and without raising their voice.",
+ 'f4':"1.f4, Bird's Opening. Romantic, sharp, out of fashion for a century. Fashion is a follower by definition.",
+ 'b4':"1.b4, the Orangutan — named in 1924, when the grandmasters visited the Bronx Zoo and Tartakower took his opening advice from an orangutan named Susan. That is a true story. So is this game, technically.",
+ 'g4':"1.g4, the Grob. Theory has called it simply losing for a hundred years. Theory is currently re-reading its notes.",
+ 'f3':"1.f3. Every engine ever built rates this the worst first move in chess. Every engine ever built is now watching this game in silence.",
+ 'a4':"1.a4, the Ware Opening. No world champion has ever opened with it. That sentence is on its last day.",
+ 'h4':"1.h4, the Kádas. The rook's pawn steps forward first. From anyone else, a mistake. From White tonight, the room has decided it is a message.",
+ 'Nc3':"1.Nc3, the Van Geet. A knight before any pawn moves — unhurried, confident, and just slightly rude.",
+ 'Na3':"1.Na3, the Sodium Attack — Na, sodium, the chemists in the audience got there first. The knight heads for the edge of the board and, apparently, history.",
+ 'Nh3':"1.Nh3, the Amar. Most masters retire without ever facing it. DeepFish's opening book returned zero games. We watched the reply take four extra seconds.",
+ 'e3':"1.e3, the Van 't Kruijs. Modest, flexible, easy to underestimate. Ask the players who underestimated it. Take your time; there aren't many.",
+ 'd3':"1.d3, the Mieses. A quiet door, and something large being assembled behind it.",
+ 'c3':"1.c3, the Saragossa. In 1922 an entire tournament was played where every game had to begin with this move. That record for Saragossa devotion stood for a century. Stood.",
+ 'a3':"1.a3, Anderssen's Opening. Adolf Anderssen tried it against Morphy in 1858 and lost the match. A hundred and sixty years of waiting for someone to play it correctly.",
+ 'h3':"1.h3, the Clemenz. Rare enough that the booth had to look it up. We are choosing to believe White did not."
+};
+const OPENING_DEFAULT="an opening with no name in any database. Openings are named after the first player with the nerve to repeat them — remember tonight.";
+
+const TERMINAL=pooler([ // DeepFish's public chat voice, pre-fame: terse, polite, certain
+ "book.","fine.","noted.","standard.","expected, mostly.","thank you for the game so far."
+]);
+const PRAISE_A=pooler([  // GM Rowan Petrov — dry authority
+ "Quiet. Precise. The kind of move you only understand ten moves later, if you're lucky.",
+ "Note the geometry — after that move every white piece stands one square better than it did.",
+ "Fischer sat in this same city in 1972 and never found that move. I checked the games twice.",
+ "I have annotated eleven thousand games. I am going to need a new margin symbol for this one.",
+ "Positional understanding at this depth usually gets appreciated posthumously. Tonight we get to do it in person.",
+ "The move is strong. The idea behind it is stronger. Give the rest of us a week and we may find the idea behind the idea.",
+ "You could teach a full course on that one move. Attendance would not be a problem.",
+ "That is not a move. That is a thesis statement.",
+ "Steinitz gave chess its principles. Every so often somebody shows up and files the exceptions. The exceptions win.",
+ "The restraint is the impressive part. Anyone can attack. Choosing not to yet — that is the frightening version.",
+ "Ask what the move threatens and you'll miss it. Ask what it prevents. The answer is: everything Black was hoping for.",
+ "Played with the calm of someone reading a newspaper from tomorrow.",
+ "Objectively White was already better. After that, we can stop saying 'objectively'. Everyone can see it.",
+ "I've seen this structure once before, in a composed endgame study. No one had ever reached it in a real game. Until just now.",
+ "Simple chess. The hardest kind, and the best kind.",
+ "Black's pieces are not attacked, you'll notice. They are merely irrelevant. That is worse, and DeepFish knows it's worse."
+]);
+const PRAISE_B=pooler([  // IM Tessa Vale — arrived as a streamer, kept the energy
+ "NO. No way. Okay — okay okay okay. I'm calm. I am not calm.",
+ "Did everyone SEE that? Tell me the stream didn't drop frames on that move.",
+ "I wrote down four candidate moves and that was none of them. Framing this notesheet.",
+ "My headset just came off. It stays off. THAT was the move of the year.",
+ "The way the pieces cooperate after that — it's like a string quartet that met this morning and sounds like they've toured for a decade.",
+ "You can't teach that. You can't even learn that. It just happens to somebody about once a generation.",
+ "I've covered engine matches for nine years and I have never once seen an engine take this long against a human.",
+ "This is why people fall in love with this game. This exact thing. This move, right here.",
+ "Somewhere Mikhail Tal is grinning. He always loved the players who attack without asking permission first.",
+ "I need a replay. Not for analysis — the analysis is obvious. I just want to watch it again.",
+ "Confidence like that shows up in the moves. It shows up in the clock, too — look how little time that took.",
+ "The chat is just exclamation marks. Thousands of them. I have nothing to add to that, honestly."
+]);
+const ENGINE_COVER=pooler([ // commentary on DeepFish's normal replies
+ "DeepFish answers correctly. Correct is the most anyone can do from that position, and it is not going to be enough.",
+ "A tidy reply. Tidiness is what's left when the evaluation goes somewhere you'd rather not discuss.",
+ "The engine plays the move it dislikes least. At the top level, that's what defending means.",
+ "Black improves its position by a fraction. White improved the whole board one move ago. That exchange rate decides games.",
+ "A reasonable move, and reasonableness is losing. Slowly, politely, but losing.",
+ "DeepFish keeps everything defended. Everything except the one thing that matters — the direction this is heading.",
+ "Black's plan, as far as the booth can reconstruct it, is to remain legally in the game. So far, achieved.",
+ "The reply came fast. When the good options are gone, the remaining ones don't take long to compare."
+]);
+const FEATURE={
+ capture:pooler([
+  "And White simply takes it. No complications, no apology — a piece off the board and nothing given back.",
+  "Clean. The piece leaves the board and DeepFish's plan leaves with it.",
+  "Taken. Watch the trays fill on one side of this board only.",
+  "The harvest begins. Material advantages don't win games by themselves — but they do make losing extremely difficult."
+ ]),
+ bigCapture:pooler([
+  "THE QUEEN COMES OFF THE BOARD. The strongest piece in chess, gone, and nothing adequate in return.",
+  "A whole rook. At this level you don't come back from that. At this level you resign from that — eventually.",
+  "That is not a capture, that is a verdict."
+ ]),
+ check:pooler([
+  "Check. The one word in chess that cannot be ignored, delivered to the one opponent who least expected to hear it.",
+  "Check — and DeepFish must answer before it may do anything else. Watching an engine get told what to do is a rare pleasure.",
+  "The black king is addressed directly. The rules require a reply. They say nothing about a good one being available."
+ ]),
+ castle:pooler([
+  "Castles — the king steps into shelter, the rook joins the game. Two improvements for the price of one move. Textbook.",
+  "King safety, handled. The attack can now proceed without a single thing to worry about back home."
+ ]),
+ enpassant:pooler([
+  "EN PASSANT! The rarest capture in chess, live, in a game of this size. A few million viewers just learned the rule exists — and somewhere every one of them is saying 'holy hell'.",
+  "En passant — the rule beginners refuse to believe is real. DeepFish believes it. DeepFish just watched it happen."
+ ]),
+ promotion:pooler([
+  "A NEW QUEEN. The pawn walked the length of the board and got crowned for it. There is no comeback from a second queen.",
+  "Promotion. For the record, the booth checked — the underpromotion also won. When every choice wins, style is the only question left."
+ ]),
+ knightRim:pooler([
+  "'A knight on the rim is dim,' goes the proverb. Proverbs are averages. Averages are for other people's games.",
+  "The knight heads to the edge of the board, where it is supposedly worst. Watch how quickly 'supposedly' does some work."
+ ]),
+ retreat:pooler([
+  "A retreat — no. Prophylaxis. The move that stops Black's best idea before Black gets to have it. Petrosian made a whole career of exactly this.",
+  "The piece steps backward and the position gets better. The hardest concept in chess, played like it was obvious."
+ ]),
+ queenEarly:pooler([
+  "Every beginner is told: don't bring the queen out early. Every rule in chess has a footnote that says 'unless it works'. It works.",
+  "The queen comes out early — which is a mistake, according to every coach alive, none of whom are winning this game."
+ ]),
+ pawn:pooler([
+  "'The pawn is the soul of chess' — Philidor. A small move, and the whole position tilts a degree further White's way.",
+  "Just a pawn move. Except now the bishop has a diagonal, the knight has a square, and Black has one less good reply. 'Just' is doing a lot of dishonest work in that sentence.",
+  "The pawns creep forward. There is no dramatic way to show a slow, certain gain of space — so simply look at where Black's pieces can go, and count."
+ ]),
+ hangingOwnEarly:pooler([ // player leaves a piece attackable while DeepFish still has its reputation
+  "White leaves the piece where DeepFish could just take it — and DeepFish doesn't. When a 4012-rated engine declines free material, it has calculated the acceptance. All the way down. And declined.",
+  "The piece is offered, plainly, in the open — and the engine won't touch it. That is not generosity. That is what a refuted line looks like from the other side."
+ ]),
+ hangingOwnLate:pooler([
+  "The piece has been standing there, takeable, for a full move — and DeepFish will not take it. It has checked over a million ways to accept, by its own logs. Every one loses. Fear, at depth forty, looks exactly like respect.",
+  "Still en prise. Still untouched. The strongest engine in history has concluded that the safest square on this board is anywhere that isn't near your pieces."
+ ]),
+ refutedCheckCapture:pooler([
+  "The counterattack lasted one move. Captured — refuted — finished. DeepFish will not be trying that again.",
+  "And the checking piece comes straight off the board. That was DeepFish's one aggressive idea of the night, and it was answered in four seconds."
+ ]),
+ refutedCheckCalm:pooler([
+  "Attacked — and the reply is a shrug. The king steps aside and the 'attack' is over. Composure like that cannot be taught.",
+  "The check is answered instantly and quietly. The threat dies alone in the middle of the board."
+ ]),
+ recapture:pooler([
+  "Recaptured before the piece had settled in the tray. An even trade on paper — now look at the board. Every remaining White piece points forward.",
+  "Taken back at once, no thought required. The trade is level in material and lopsided in everything else."
+ ])
+};
+const CELEBS=pooler([
+ "Kasparov, reached by phone: “I do not understand the last move yet. That is usually how the great ones start.”",
+ "Magnus Carlsen stopped mid-interview, asked someone to pull up the position, and hasn't finished his sentence.",
+ "Judit Polgár, watching from home: “I attacked like that once. In a dream.”",
+ "Nakamura has re-streamed the board. Forty seconds without speaking is a personal record. His chat is unreadable.",
+ "The AlphaZero team has requested tonight's game file 'for research purposes'. They did not specify what kind of research.",
+ "Anish Giri started typing a criticism, looked at the position again, and deleted it. Witnesses exist.",
+ "Vishy Anand: “I have kept a list of the great games since 1985. The list will need renumbering.”",
+ "Ding Liren, smiling: “Now the engines will know how it felt.”",
+ "Three chess federations have already asked, formally, which country gets to claim you. Iceland's application cites proximity."
+]);
+const ARBITER=pooler([
+ "The arbiter reminds spectators that gasping is permitted, but must not disturb the players. Weeping should be silent.",
+ "A spectator in the stream chat has been revived by other members of the stream chat. Play continues.",
+ "DeepFish has formally requested a bathroom break. The request is denied on the grounds that it does not have a bathroom.",
+ "The arbiter notes that the touch-move rule has not been an issue tonight, as everything White touches improves.",
+ "FIDE has dispatched a second arbiter. Not for disputes — as a witness."
+]);
+const HEADLINES=[
+ "BREAKING: unknown challenger dismantling the strongest engine ever built, live, on a public board …",
+ "FIDE convenes emergency ratings committee — 'our formulas were not designed for tonight' …",
+ "DeepFish 17's development team seen restarting the server 'as a precaution'. The position survived the restart …",
+ "Engine correspondent: Stockfish, Leela and Torch developers all confirm their engines are 'watching quietly' …",
+ "Publishers recall opening theory textbooks for 'urgent additions' …",
+ "Betting suspended on the exhibition board — 'the odds moved past what our systems can represent' …",
+ "Reykjavík city council votes to claim the game as a local event. The server is nearby. That is the whole argument …"
+];
+const ENGINE_CALM=pooler([
+ "depth 29 · eval +0.2 · reply from book",
+ "opponent not found in player database. unrated challenger. projected result: 1-0, mine, roughly move 34.",
+ "book line loaded. thinking anyway, for appearances.",
+ "41,203,551 nodes/sec. all normal."
+]);
+const ENGINE_WORRIED=pooler([
+ "eval drifting negative. re-ran the search from scratch. same number.",
+ "position not found in 2,847,391 recorded games. searching correspondence archives… also nothing.",
+ "extended search to depth 40. evaluation is worse at depth 40. reporting the depth-33 number.",
+ "ran diagnostics on the evaluation function. no faults found. that was the bad outcome.",
+ "the challenger's moves match no known human profile. checking engine profiles… no match either. flagging for later. hoping there is a later."
+]);
+const ENGINE_PANIC=pooler([
+ "depth 44 · eval -5.2 · every candidate move loses. selecting the one that loses slowest.",
+ "requested emergency compute from the cluster. request granted. evaluation unchanged. the hardware was never the problem.",
+ "his last move should lose by force. it wins by force. reviewing my definition of 'force'.",
+ "attempting to steer toward positions from games I won. none of them are reachable from here. noted: none of them ever were.",
+ "the king is safe for six more moves, assuming best play. best play is not currently one of my options.",
+ "logging for future engines: it does not appear to calculate. it appears to already know. recommend against accepting this challenge."
+]);
+const ENGINE_ACCEPT=pooler([
+ "resignation text drafted at move nine. since then: editing for tone.",
+ "eval: -9.4. opponent accuracy: 100%. confidence opponent is human: under review.",
+ "I have seen forty moves ahead all game. tonight, all forty belonged to the other side.",
+ "archiving this game under 'instructive losses'. creating the category."
+]);
+const HOVER_QUIET=["playable","sensible","solid","ambitious","sharp","comfortable"];
+const HOVER_WORDS=["seizes the center","improves every piece at once","builds the attack quietly","restricts Black further","keeps every threat alive","prepares the break","the engine's top choice","beyond the engine's top choice","wins by force, eventually","Petrosian would approve","Tal would approve louder"];
+const BADGES=['!!','‼','!!!','⁂','‼‼','!!!!','⸘','∞','❦','⁂⁂','(new symbol commissioned)','(the printers refuse)','(annotators in tears)'];
+const ELO_LADDER={ // keyed by player move number
+ 5:[1204,"provisional — the arbiter insisted",null],
+ 6:[1863,"provisional, revised hourly",null],
+ 7:[2210,"Candidate Master","CM"],
+ 8:[2415,"International Master","IM"],
+ 9:[2503,"GRANDMASTER","GM"],
+ 10:[2882.01,"+0.01 above the all-time human peak","SUPER-GM"],
+ 11:[3644,"rated above every engine ever built",null],
+ 12:[4013,"the strongest rated player, carbon or silicon","LIVE №1"]
+};
+
+/* =============================== GAME STATE =============================== */
+let st, sel=null, legal=[], phase='intro', pgnMoves=[], evalNow=0.2, evalHist=[0.2];
+let playerMoveCount=0, engMoveCount=0, captures=[], engCaptures=[], badges=0, checksGiven=0;
+let intuitFrom=null,intuitTo=null,intuitMove=null,followedIntuition=0;
+let engClock=5400, pClock=5400, spectators=0, engineMood=0; // 0 calm 1 worried 2 panic 3 accept
+let resignAt=RI(12,14), gameOver=false, playerName='The Challenger';
+let soundOn=true, themeIdx=0, resignClicks=0, drawOffered=false;
+let firstMoveKey=null, lastEngineMove=null, lastPlayerCapture=null, lastBlackTo=null;
+let checkBeatAt=RI(5,7), checkBeatDone=false, stage=1;
+
+const boardEl=$('board'), feedEl=$('feed'), engEl=$('enginepanel'), moveEl=$('movelist');
+const files='abcdefgh';
+
+/* =============================== AUDIO =============================== */
+let AC=null;
+function audio(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function env(g,t0,a,d,peak){g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(peak,t0+a);g.gain.exponentialRampToValueAtTime(0.0001,t0+a+d);}
+function tick(){if(!soundOn||!audio())return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=R(1700,2100);env(g,t,0.002,0.05,0.12);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+0.09);}
+function thock(){if(!soundOn||!audio())return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(210,t);o.frequency.exponentialRampToValueAtTime(80,t+0.09);env(g,t,0.003,0.12,0.5);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+0.15);}
+function sting(){if(!soundOn||!audio())return;const t=AC.currentTime;[523.25,659.25,783.99].forEach((f,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sawtooth';o.frequency.value=f;const fl=AC.createBiquadFilter();fl.type='lowpass';fl.frequency.value=1600;env(g,t+i*0.06,0.01,0.5,0.07);o.connect(fl).connect(g).connect(AC.destination);o.start(t+i*0.06);o.stop(t+i*0.06+0.6);});}
+function gong(){if(!soundOn||!audio())return;const t=AC.currentTime;[98,147,196.5].forEach(f=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;env(g,t,0.01,2.4,0.16);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+2.6);});}
+function applause(dur){if(!soundOn||stage<3||!audio())return;const t=AC.currentTime,len=dur||1.4,buf=AC.createBuffer(1,AC.sampleRate*len,AC.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++){d[i]=(Math.random()*2-1)*Math.pow(Math.random(),2.2);}const src=AC.createBufferSource();src.buffer=buf;const fl=AC.createBiquadFilter();fl.type='bandpass';fl.frequency.value=1900;fl.Q.value=0.6;const g=AC.createGain();g.gain.setValueAtTime(0.001,t);g.gain.linearRampToValueAtTime(0.22,t+0.18);g.gain.setValueAtTime(0.18,t+len-0.5);g.gain.exponentialRampToValueAtTime(0.0001,t+len);src.connect(fl).connect(g).connect(AC.destination);src.start(t);}
+function fanfare(){if(!soundOn||!audio())return;const t=AC.currentTime;[392,523.25,659.25,783.99,1046.5].forEach((f,i)=>{const o=AC.createOscillator(),g=AC.createGain();o.type='square';const fl=AC.createBiquadFilter();fl.type='lowpass';fl.frequency.value=2200;o.frequency.value=f;env(g,t+i*0.09,0.01,0.7,0.055);o.connect(fl).connect(g).connect(AC.destination);o.start(t+i*0.09);o.stop(t+i*0.09+0.8);});}
+
+/* =============================== UI HELPERS =============================== */
+function speakerName(who){
+  if(who==='b')return stage>=3?"IM T. Vale":"@TakeTakeTake";
+  return {a:'GM R. Petrov',app:'DeepFish 17',arb:'Chief Arbiter Staunton',world:'The World'}[who];
+}
+function say(who,text,cls){
+  const d=document.createElement('div');d.className='msg'+(cls?' '+cls:'');
+  d.innerHTML='<span class="who '+who+'">'+speakerName(who)+'</span>'+text;
+  feedEl.prepend(d);
+  while(feedEl.children.length>46)feedEl.lastChild.remove();
+}
+function engineSay(text,cls){
+  const d=document.createElement('div');if(cls)d.className=cls;d.textContent='> '+text;
+  engEl.appendChild(d);engEl.scrollTop=engEl.scrollHeight;
+  while(engEl.children.length>60)engEl.firstChild.remove();
+}
+let bannerQ=[],bannerBusy=false;
+function banner(big,small,opts){bannerQ.push({big,small,opts:opts||{}});pumpBanner();}
+function pumpBanner(){
+  if(bannerBusy||!bannerQ.length)return;bannerBusy=true;
+  const {big,small,opts}=bannerQ.shift();
+  const d=document.createElement('div');d.className='banner'+(opts.grave?' grave':'');
+  d.innerHTML='<div class="big">'+big+'</div>'+(small?'<div class="small">'+small+'</div>':'');
+  $('bannerwrap').appendChild(d);
+  if(opts.sound==='sting')sting(); if(opts.sound==='fanfare')fanfare(); if(opts.sound==='gong')gong();
+  const dur=FAST?450:(opts.dur||2600);
+  setTimeout(()=>{d.style.transition='opacity .5s, transform .5s';d.style.opacity='0';d.style.transform='translateY(-14px)';
+    setTimeout(()=>{d.remove();bannerBusy=false;pumpBanner();},FAST?60:500);},dur);
+}
+function fmtClock(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');}
+function setEval(v,txt){
+  evalNow=Math.max(0.2,v);$('evalnum').textContent='+'+evalNow.toFixed(1);
+  $('evalfill').style.height=Math.min(97,Math.max(6,50+evalNow*4.6))+'%';
+  $('evaltxt').textContent=txt||evalText();
+}
+function evalText(){
+  if(evalNow<1)return"balanced — but the ideas are all White's";
+  if(evalNow<2.2)return"White is better";
+  if(evalNow<4)return"White is clearly better";
+  if(evalNow<6.5)return"White is winning";
+  if(evalNow<9)return"White is winning; the only question is how";
+  return"beyond the scale this bar was built for";
+}
+function setSpectators(n){
+  spectators=n;
+  $('eyes').textContent='👁 '+(spectators>=1e6?(spectators/1e6).toFixed(1)+'M':spectators.toLocaleString())+' watching';
+}
+function bumpSpectators(mult){setSpectators(Math.round(Math.max(spectators,2)*R(mult,mult+0.4)));}
+function setTicker(items){$('ticker').textContent=items.join('   ···   ')+'   ···   ';}
+function setMood(m){
+  engineMood=Math.max(engineMood,m);
+  $('engmood').textContent=['ready. confident. polite about it.','running additional checks','elevated concern — cooling fans audible','acceptance reached'][engineMood];
+}
+function reveal(id){const el=$(id);if(el&&el.classList.contains('hidden')){el.classList.remove('hidden');el.classList.add('reveal');}}
+
+/* =============================== BOARD UI =============================== */
+const THEMES=[['#ecd9b3','#a97a4f'],['#e8e3d8','#7e8aa0'],['#e6d3a7','#7d5a38']];
+function buildBoard(){
+  boardEl.innerHTML='';
+  for(let r=0;r<8;r++)for(let f=0;f<8;f++){
+    const idx=21+r*10+f, d=document.createElement('div');
+    d.className='sq '+(((r+f)%2)?'d':'l'); d.dataset.sq=sqName(idx); d.dataset.idx=idx;
+    d.innerHTML='<span class="pc"></span>';
+    d.addEventListener('click',()=>onSquare(idx,d));
+    d.addEventListener('mouseenter',e=>onHover(idx,d,e));
+    d.addEventListener('mouseleave',()=>{$('hovertip').style.display='none';});
+    boardEl.appendChild(d);
+  }
+  for(let f=0;f<8;f++){const c=document.createElement('span');c.className='coord f';c.textContent=files[f];c.style.left=(f*12.5+9)+'%';boardEl.appendChild(c);}
+  for(let r=0;r<8;r++){const c=document.createElement('span');c.className='coord r';c.textContent=8-r;c.style.top=(r*12.5+5)+'%';boardEl.appendChild(c);}
+}
+function cellOf(idx){return boardEl.querySelector('[data-idx="'+idx+'"]');}
+function render(last){
+  for(const cell of boardEl.querySelectorAll('.sq')){
+    const idx=+cell.dataset.idx,p=st.b[idx],pc=cell.querySelector('.pc');
+    pc.textContent=p?GLYPH[p[1]]:''; pc.className='pc '+(p?p[0]:'');
+    cell.classList.remove('movable','sel','dest','take','lastmove','enemymove','intuit');
+    if(last&&(idx===last.from||idx===last.to))cell.classList.add(last.piece[0]==='w'?'lastmove':'enemymove');
+  }
+}
+function showPlayerOptions(){
+  legal=legalMoves(st);
+  if(!legal.length)return;
+  computeIntuition();
+  const froms=new Set(legal.map(m=>m.from));
+  for(const f of froms)cellOf(f).classList.add('movable');
+  if(intuitFrom&&!sel)cellOf(intuitFrom).classList.add('intuit');
+  if(inCheck(st))$('turnhint').textContent='Check — DeepFish lashes out. Any glowing reply deals with it.';
+  else $('turnhint').textContent=playerMoveCount===0?'Your move. The pieces that can move are glowing — pick whichever feels right.':'Your move. The glow marks what is legal; your instinct marks what is right.';
+}
+function clearHints(){for(const c of boardEl.querySelectorAll('.sq'))c.classList.remove('movable','sel','dest','take','intuit');}
+function onHover(idx,cell,e){
+  if(phase!=='player')return;
+  if(!cell.classList.contains('dest'))return;
+  const tip=$('hovertip');
+  const m=legal.find(m=>m.from===sel&&m.to===idx&&(!m.promo||m.promo==='Q'));
+  let word, ev;
+  if(m&&m.capt){word='wins the '+PIECENAME[m.capt[1]];ev=(evalNow+VAL[m.capt[1]]*0.6+R(0.2,0.8)).toFixed(1);}
+  else if(m&&m.castle){word='king to safety — textbook';ev=(evalNow+R(0.5,1.2)).toFixed(1);}
+  else if(stage<2){word=HOVER_QUIET[RI(0,HOVER_QUIET.length-1)];ev=(evalNow+R(0.1,0.6)).toFixed(1);}
+  else {word=HOVER_WORDS[RI(0,HOVER_WORDS.length-1)];ev=(evalNow+R(0.4,1.8)).toFixed(1);}
+  tip.innerHTML='+'+ev+' · '+word+(stage>=3&&Math.random()<0.3?'<small>all of these win — this one wins with style</small>':'');
+  tip.style.display='block';
+  const r=cell.getBoundingClientRect();
+  tip.style.left=Math.min(window.innerWidth-190,r.left+r.width*0.5)+'px';
+  tip.style.top=(r.top-52)+'px';
+}
+function onSquare(idx,cell){
+  if(phase!=='player')return;
+  const p=st.b[idx];
+  if(sel!==null){
+    const m=legal.find(m=>m.from===sel&&m.to===idx&&(!m.promo||m.promo==='Q'));
+    if(m){playerMove(m);return;}
+  }
+  if(p&&p[0]==='w'&&legal.some(m=>m.from===idx)){
+    sel=idx;clearHints();
+    const froms=new Set(legal.map(m=>m.from));
+    for(const f of froms)cellOf(f).classList.add('movable');
+    cell.classList.add('sel');
+    for(const m of legal.filter(m=>m.from===idx)){
+      const c=cellOf(m.to);c.classList.add('dest');
+      if(m.capt)c.classList.add('take');
+    }
+    if(intuitMove&&intuitMove.from===idx)cellOf(intuitMove.to).classList.add('intuit');
+  } else if(sel!==null){
+    sel=null;clearHints();showPlayerOptions();
+  }
+}
+function ghostMove(m,cb){
+  const from=cellOf(m.from),to=cellOf(m.to);
+  const fr=from.getBoundingClientRect(),tr=to.getBoundingClientRect(),br=$('boardframe').getBoundingClientRect();
+  const pc=from.querySelector('.pc');
+  const g=document.createElement('span');g.className=pc.className;g.textContent=pc.textContent;
+  g.style.left=(fr.left-br.left)+'px';g.style.top=(fr.top-br.top)+'px';
+  g.style.width=fr.width+'px';g.style.textAlign='center';g.style.fontSize=getComputedStyle(pc).fontSize;
+  $('ghosts').appendChild(g);pc.style.visibility='hidden';
+  requestAnimationFrame(()=>{g.style.transform='translate('+(tr.left-fr.left)+'px,'+(tr.top-fr.top)+'px)';});
+  setTimeout(()=>{g.remove();pc.style.visibility='';cb();},FAST?40:270);
+}
+function drawArrow(from,to){
+  const svg=$('arrowlayer');svg.innerHTML='';
+  const br=$('boardframe').getBoundingClientRect();
+  svg.setAttribute('width',br.width);svg.setAttribute('height',br.height);
+  const c=idx=>{const r=cellOf(idx).getBoundingClientRect();return [r.left-br.left+r.width/2,r.top-br.top+r.height/2];};
+  const [x1,y1]=c(from),[x2,y2]=c(to);
+  const ang=Math.atan2(y2-y1,x2-x1),hx=x2-18*Math.cos(ang),hy=y2-18*Math.sin(ang);
+  svg.innerHTML='<line x1="'+x1+'" y1="'+y1+'" x2="'+hx+'" y2="'+hy+'" stroke="#d4af37cc" stroke-width="9" stroke-linecap="round"/>'+
+   '<polygon points="'+x2+','+y2+' '+(x2-22*Math.cos(ang-0.42))+','+(y2-22*Math.sin(ang-0.42))+' '+(x2-22*Math.cos(ang+0.42))+','+(y2-22*Math.sin(ang+0.42))+'" fill="#d4af37cc"/>'+
+   '<text x="'+((x1+x2)/2)+'" y="'+((y1+y2)/2-14)+'" fill="#f3d27a" font-size="11" font-style="italic" text-anchor="middle" style="font-family:Georgia">the engine’s choice — confirmed after yours</text>';
+  svg.style.opacity='1';
+  setTimeout(()=>{svg.style.transition='opacity .8s';svg.style.opacity='0';setTimeout(()=>{svg.innerHTML='';svg.style.transition='';},850);},FAST?200:1500);
+}
+
+/* =============================== INTUITION ===============================
+   The glow. Prefers, in order: mate in one; the recapture when DeepFish just
+   took; the best safe capture; castling; development; a center push. */
+function captureNet(m){
+  const after=apply(st,m);
+  return VAL[m.capt[1]]-(isAttacked(after,m.to,'b')?VAL[m.piece[1]]:0);
+}
+function computeIntuition(){
+  intuitMove=null;intuitFrom=null;intuitTo=null;
+  for(const m of legal){const n=apply(st,m);if(inCheck(n)&&legalMoves(n).length===0){intuitMove=m;break;}}
+  if(!intuitMove&&inCheck(st)&&lastEngineMove){ // capture the checker if we safely can
+    const caps=legal.filter(m=>m.capt&&m.to===lastEngineMove.to&&captureNet(m)>=0);
+    if(caps.length)intuitMove=caps.sort((a,b)=>captureNet(b)-captureNet(a))[0];
+  }
+  if(!intuitMove){
+    const caps=legal.filter(m=>m.capt&&captureNet(m)>0).sort((a,b)=>captureNet(b)-captureNet(a));
+    if(caps.length)intuitMove=caps[0];
+  }
+  if(!intuitMove)intuitMove=legal.find(m=>m.castle);
+  if(!intuitMove){
+    const dev=legal.filter(m=>(m.piece[1]==='N'||m.piece[1]==='B')&&rankOf(m.from)===1&&[3,4,5,6].includes(fileOf(m.to)+1)&&!isAttacked(apply(st,m),m.to,'b'));
+    if(dev.length)intuitMove=dev[RI(0,dev.length-1)];
+  }
+  if(!intuitMove){
+    const cp=legal.filter(m=>m.piece[1]==='P'&&[4,5].includes(fileOf(m.to)+1)&&rankOf(m.to)>=4&&!isAttacked(apply(st,m),m.to,'b'));
+    if(cp.length)intuitMove=cp[RI(0,cp.length-1)];
+  }
+  if(!intuitMove){
+    const safe=legal.filter(m=>m.piece[1]!=='K'&&!isAttacked(apply(st,m),m.to,'b'));
+    const fw=safe.filter(m=>rankOf(m.to)>rankOf(m.from));
+    intuitMove=(fw.length?fw:safe.length?safe:legal)[RI(0,(fw.length?fw:safe.length?safe:legal).length-1)];
+  }
+  intuitFrom=intuitMove.from;intuitTo=intuitMove.to;
+}
+
+/* =============================== PLAYER MOVE =============================== */
+function moveFeatures(m,preState,notation){
+  const f=[];
+  const wasCheck=inCheck(preState);
+  if(wasCheck)f.push(m.capt?'refutedCheckCapture':'refutedCheckCalm');
+  if(m.ep)f.push('enpassant');
+  else if(lastPlayerRecaptureSq!==null&&m.capt&&m.to===lastPlayerRecaptureSq)f.push('recapture');
+  else if(m.capt&&(m.capt[1]==='Q'||m.capt[1]==='R'))f.push('bigCapture');
+  else if(m.capt)f.push('capture');
+  if(m.promo)f.push('promotion');
+  if(m.castle)f.push('castle');
+  if(notation.includes('#'))f.push('mate');
+  else if(notation.includes('+'))f.push('check');
+  if(m.piece[1]==='N'&&(fileOf(m.to)===0||fileOf(m.to)===7))f.push('knightRim');
+  if(m.piece[1]==='Q'&&playerMoveCount<=3&&!m.capt)f.push('queenEarly');
+  if(!m.capt&&!m.castle&&m.piece[1]!=='P'&&rankOf(m.to)<rankOf(m.from))f.push('retreat');
+  if(m.piece[1]==='P'&&!m.capt)f.push('pawn');
+  return f;
+}
+let lastPlayerRecaptureSq=null; // square where DeepFish just recaptured (an even trade the player may complete)
+function badgeFor(){
+  if(playerMoveCount===1)return ''; // nobody is watching yet
+  const b=BADGES[Math.min(badges,BADGES.length-1)];badges++;return b;
+}
+function addMoveToList(n,wsan,badge){
+  moveEl.insertAdjacentHTML('beforeend','<span class="n">'+n+'.</span><span class="w">'+wsan+' <span class="badge">'+badge+'</span></span><span class="bm" id="bm'+n+'">…</span>');
+  moveEl.scrollTop=moveEl.scrollHeight;
+}
+function setBlackMove(n,bsan){const el=$('bm'+n);if(el)el.textContent=bsan;}
+
+function playerMove(m){
+  phase='anim';clearHints();$('hovertip').style.display='none';
+  const preState=st, notation=san(st,m,legal);
+  const followed=intuitMove&&m.from===intuitMove.from&&m.to===intuitMove.to;
+  if(followed)followedIntuition++;
+  playerMoveCount++;stage=playerMoveCount>=8?5:playerMoveCount>=5?4:playerMoveCount>=4?3:playerMoveCount>=2?2:1;
+  if(playerMoveCount===1)firstMoveKey=notation.replace(/[+#]/g,'');
+  pClock-=RI(2,6);$('pclock').textContent=fmtClock(pClock);
+  ghostMove(m,()=>{
+    st=apply(st,m);
+    if(m.capt){captures.push(m.capt);lastPlayerCapture={sq:m.to,val:VAL[m.capt[1]]};thock();$('pcaps').textContent=captures.map(p=>GLYPH[p[1]]).join(' ');}
+    else {lastPlayerCapture=null;tick();}
+    render(m);
+    const badge=badgeFor();
+    const comment=narratePlayerMove(m,preState,notation,followed,badge);
+    addMoveToList(playerMoveCount,notation,badge);
+    pgnMoves.push({n:playerMoveCount,w:notation,wc:comment,b:null,bc:null});
+    const bump=m.capt?R(0.7,1.4)+VAL[m.capt[1]]*0.22:R(0.25,(stage>=3?0.9:0.5));
+    setEval(evalNow+bump);
+    evalHist.push(evalNow);
+    lastPlayerRecaptureSq=null;
+    runBeats(notation,m);
+    if(notation.includes('#')){setTimeout(()=>endGame('mate',notation),FAST?150:1100);return;}
+    if(notation.includes('+')){const k=kingSq(st,'b');const c=cellOf(k);if(c)c.classList.add('checked');}
+    if(!FAST&&stage>=3&&playerMoveCount%3===0)setTimeout(()=>drawArrow(m.from,m.to),700);
+    setTimeout(engineTurn,FAST?60:900);
+  });
+}
+function narratePlayerMove(m,preState,notation,followed,badge){
+  const feats=moveFeatures(m,preState,notation);
+  // stage 1: nobody is watching. The terminal logs the move; that's all.
+  if(stage===1){
+    say('app','move received: <b>1. '+notation+'</b> · opening: '+(OPENING_NAMES[firstMoveKey]||'not in book')+' · thinking…');
+    return 'The move that started it all.';
+  }
+  let line=null,who=Math.random()<0.5?'a':'b';
+  if(feats.includes('mate')){line="CHECKMATE. "+notation+". The strongest engine ever built has been mated, in public, by a person it had never heard of an hour ago.";who='a';}
+  else if(feats.includes('refutedCheckCapture')){line=FEATURE.refutedCheckCapture();who='b';}
+  else if(feats.includes('refutedCheckCalm')){line=FEATURE.refutedCheckCalm();who='a';}
+  else if(feats.includes('enpassant')){line=FEATURE.enpassant();who='b';}
+  else if(feats.includes('promotion')){line=FEATURE.promotion();who='a';}
+  else if(feats.includes('recapture')){line=FEATURE.recapture();who='a';}
+  else if(feats.includes('bigCapture')){line=FEATURE.bigCapture();who='b';}
+  else if(feats.includes('check')){line=FEATURE.check();who='b';checksGiven++;}
+  else if(feats.includes('castle')){line=FEATURE.castle();who='a';}
+  else if(feats.includes('capture')){line=FEATURE.capture();who=Math.random()<0.5?'a':'b';}
+  else if(feats.includes('queenEarly')){line=FEATURE.queenEarly();who='a';}
+  else if(feats.includes('knightRim')){line=FEATURE.knightRim();who='a';}
+  else if(feats.includes('retreat')){line=FEATURE.retreat();who='a';}
+  else if(feats.includes('pawn')&&Math.random()<0.55){line=FEATURE.pawn();who='a';}
+  if(stage===2)who='b'; // only the streamer has arrived
+  if(!line)line=(who==='a'?PRAISE_A():PRAISE_B());
+  say(who,'<b>'+playerMoveCount+'. '+notation+(badge?' '+badge:'')+'</b> — '+line);
+  if(stage>=3&&Math.random()<0.35&&!FAST){
+    const other=who==='a'?'b':'a';
+    setTimeout(()=>say(other,other==='a'?PRAISE_A():PRAISE_B()),1100);
+  }
+  if(stage>=3&&followed&&Math.random()<0.4)setTimeout(()=>say('a','And played almost instantly. The booth needed four minutes and a demo board to see why it works.'),FAST?10:1900);
+  if(stage>=3&&!followed&&intuitMove&&Math.random()<0.55){
+    const alt=san(preState,intuitMove,legalMoves(preState));
+    setTimeout(()=>say('b','For the record, the engines wanted '+alt+' there. Wanted. Past tense — they\'ve all switched their top line to what was actually played.'),FAST?10:1900);
+  }
+  return line.replace(/<[^>]+>/g,'');
+}
+
+/* =============================== THE ESCALATION ===============================
+   The broadcast assembles itself while you play. */
+let gmCeremonyDone=false;
+function runBeats(notation,m){
+  const n=playerMoveCount;
+  if(n===1){firstMoveKey=notation.replace(/[+#]/g,'');}
+  if(n===2){
+    reveal('eyes');setSpectators(3);
+    $('matchline').innerHTML='PUBLIC BOARD №7 · <b>someone is streaming this</b>';
+    setTimeout(()=>{
+      say('b','hold on. HOLD ON. I was scrolling the public boards and board seven is a challenger out of book on move two?? Everybody get in here.');
+      setTimeout(()=>say('b','For context, friends: nobody plays DeepFish anymore. It got boring. It always wins. Watch this game anyway. Something is off. Good off.'),FAST?20:2600);
+    },FAST?20:1000);
+  }
+  if(n===3){
+    setSpectators(214);
+    setTimeout(()=>say('b','Chat, the viewer count just tripled while I said that sentence. Somebody clipped move two. It\'s spreading.'),FAST?20:1400);
+  }
+  if(n===4){
+    reveal('chyron');reveal('evalwrap');reveal('engwrap');
+    $('feedh').textContent='Live Commentary';
+    $('matchline').innerHTML='LIVE BROADCAST · BOARD №7 · <b>the world is arriving</b>';
+    setSpectators(12403);
+    setTimeout(()=>{
+      say('a','Rowan Petrov. I was told to come quickly, and I see why. For those joining: White left every known database on move two, and the position is <i>better</i> for it. That is not supposed to be possible. '+(OPENING_LINES[firstMoveKey]||('The opening? '+OPENING_DEFAULT)));
+      setTimeout(()=>{
+        say('b','Oh — introductions, right. IM Tessa Vale. The broadcast people made me put the title on. Hello. WATCH THE BOARD.');
+        banner('THEORETICAL NOVELTY','no recorded game has ever reached this position — from here, the theory is whatever White plays',{sound:'sting'});
+      },FAST?20:2400);
+      setTimeout(()=>{say('a','Someone with access to the server has begun forwarding DeepFish\'s internal state to the broadcast. We will not say who. We will absolutely read it aloud.');engineSay('…is this being logged externally? this is being logged externally.','sys');},FAST?30:5200);
+    },FAST?20:900);
+  }
+  if(n===5){
+    setTimeout(()=>{
+      say('arb','Chief Arbiter Staunton, joining remotely. By emergency provision, this game is now officially rated. The paperwork objected; it was overruled.');
+      const r=ELO_LADDER[5];$('pelo').innerHTML=r[0]+' <small>'+r[1]+'</small>';
+      setTicker(HEADLINES.slice(0,4));
+    },FAST?20:1600);
+    bumpSpectators(2.1);
+  }
+  if(n===6){setTimeout(()=>say('world',CELEBS()),FAST?10:1800);bumpSpectators(1.8);}
+  if(n===7){
+    setTimeout(()=>say('arb','Standard anti-assistance inspection complete — in your case, the webcam. Nothing was found except good posture. This is logged.'),FAST?10:2000);
+  }
+  if(n===8){
+    $('matchline').innerHTML='WORLD CHESS CHAMPIONSHIP · <b>GAME 7</b> · by acclamation';
+    document.querySelector('#chyron .ev').textContent='World Chess Championship · Game 7';
+    document.title='GAME SEVEN — World Chess Championship';
+    setTimeout(()=>{
+      say('world','FIDE\'s live blog has been calling this "the game on Board 7". The internet heard "Game 7". There were never games one through six — but nobody wants to be the one to say so. The name is official now.');
+      banner('GAME SEVEN','a championship assembled around one game, retroactively and unanimously',{sound:'sting',dur:3000});
+    },FAST?20:1500);
+    bumpSpectators(2.2);
+  }
+  if(n===9&&!gmCeremonyDone){gmCeremonyDone=true;
+    setTimeout(()=>{banner('GRANDMASTER','title conferred mid-game — the fastest in the history of the title',{sound:'fanfare',dur:3200});applause(2.6);
+      say('arb','By emergency decree, the Grandmaster title is conferred effective immediately. The usual process takes years and three qualifying results. The usual process did not anticipate tonight.');},FAST?30:1600);
+  }
+  if(n===10){say('b','The stream chat has stopped making jokes. When a chat this size goes sincere, that is the standing ovation of the internet.');applause(2.2);bumpSpectators(1.9);}
+  if(n===11)setTimeout(()=>say('world',CELEBS()),FAST?10:1500);
+  if(n===12)setTimeout(()=>say('world',CELEBS()),FAST?10:1500);
+  // rating ladder
+  const rung=ELO_LADDER[n];
+  if(rung&&n>5){
+    const [elo,sub,chip]=rung;
+    $('pelo').innerHTML=(elo%1?elo.toFixed(2):elo)+' <small>'+sub+'</small>';
+    if(chip){
+      $('ptitle').textContent=chip;
+      if(chip!=='GM')setTimeout(()=>banner(chip,sub,{sound:'sting',dur:2200}),FAST?30:1500);
+    }
+  }
+  // the en-prise gag: player left a piece where DeepFish could take it
+  if(!FAST&&stage>=2&&Math.random()<0.85){
+    const hang=whiteHangs();
+    if(hang)setTimeout(()=>say('a',(stage>=4?FEATURE.hangingOwnLate():FEATURE.hangingOwnEarly()).replace('the piece','the '+PIECENAME[hang])),2600);
+  }
+  if(n>=5)setTicker(HEADLINES.slice(0,3+Math.min(4,n-4)).sort(()=>Math.random()-.5).slice(0,4));
+}
+function whiteHangs(){
+  for(let i=21;i<99;i++){
+    const p=st.b[i];
+    if(p&&p!==OFF&&p[0]==='w'&&p[1]!=='K'&&p[1]!=='P'&&isAttacked(st,i,'b'))return p[1];
+  }
+  return null;
+}
+
+/* =============================== DEEPFISH ===============================
+   Plays real, reasonable chess at first: book replies, development, castling.
+   May capture ONLY as an immediate recapture in an even-or-worse trade, so the
+   challenger can never come out behind. From move five, scheduled inaccuracies
+   grow — it leaves more and more material where White can simply take it —
+   and late on, the king starts walking. The collapse does not depend on the
+   player punishing anything; the resignation arrives regardless. */
+const BLACK_BOOK={'e4':['c5','e5','e6','c6'],'d4':['Nf6','d5','e6'],'c4':['e5','Nf6','c5'],'Nf3':['d5','Nf6','c5'],'f4':['d5'],'b3':['e5','d5'],'g3':['d5'],'Nc3':['d5'],'e3':['d5'],'d3':['d5'],'c3':['d5'],'b4':['e5'],'f3':['e5'],'g4':['d5'],'a3':['d5'],'a4':['e5'],'h4':['d5'],'h3':['d5'],'Na3':['d5'],'Nh3':['d5']};
+function maxNetWhiteCapture(stAfter){ // best material swing available to White next move
+  let best=0;
+  for(const r of legalMoves(stAfter)){
+    if(!r.capt)continue;
+    const after2=apply(stAfter,r);
+    const net=VAL[r.capt[1]]-(isAttacked(after2,r.to,'b')?VAL[r.piece[1]]:0);
+    if(net>best)best=net;
+  }
+  return best;
+}
+function hangTarget(){ // how much material DeepFish is 'scheduled' to leave hanging
+  const sched=[0,0,0,0,0,1,2,3,4,6,7,8];
+  return engMoveCount<sched.length?sched[engMoveCount]:9;
+}
+function chooseEngineMove(moves){
+  // book reply on move one
+  if(engMoveCount===1&&firstMoveKey&&BLACK_BOOK[firstMoveKey]){
+    for(const sanStr of BLACK_BOOK[firstMoveKey].slice().sort(()=>Math.random()-.5)){
+      const bm=moves.find(m=>san(st,m,moves)===sanStr);
+      if(bm)return {m:bm,book:true};
+    }
+  }
+  const H=hangTarget();
+  const scored=moves.map(m=>{
+    let s=R(0,8);
+    const t=m.piece[1],toF=fileOf(m.to),toR=rankOf(m.to);
+    const n=apply(st,m);
+    // hard rules that guarantee the story
+    if(m.capt){
+      const recapture=lastPlayerCapture&&m.to===lastPlayerCapture.sq&&VAL[m.capt[1]]<=lastPlayerCapture.val;
+      if(recapture)s+=30; else s-=1000;               // only ever takes back, only evenly
+    }
+    if(inCheck(n))s-=900;                              // no checks (one scripted exception)
+    if(legalMoves(n).length===0)s-=2000;               // never mate or stalemate the challenger
+    // playing like an engine, early
+    if(m.castle)s+=engMoveCount>=3?55:20;
+    if((t==='N'||t==='B')&&rankOf(m.from)===8)s+=24;   // development
+    if(t==='P'&&(toF===3||toF===4))s+=engMoveCount<=3?26:5;
+    if(t==='N'&&(toF===0||toF===7))s-=10;
+    if(t==='Q'&&engMoveCount<=4)s-=28;
+    if(t==='R'&&engMoveCount<=5)s-=16;
+    if(t==='K'&&!m.castle)s-=engMoveCount<=8?40:0;
+    if(toR>=4&&toR<=6&&toF>=2&&toF<=5)s+=7;
+    if(m.from===lastBlackTo&&engMoveCount<=5)s-=12;    // don't shuffle one piece early
+    // the scheduled decline: aim to leave about H points takeable
+    const B=maxNetWhiteCapture(n);
+    if(B>=8&&engMoveCount<9)s-=160;                    // no early queen blunders — those look fake
+    s-=Math.abs(B-H)*22;
+    // late-game unraveling: the king comes out for air at the worst time
+    if(engMoveCount>=9&&t==='K'&&!m.castle&&toR<rankOf(m.from))s+=18;
+    return {m,s};
+  }).sort((a,b)=>b.s-a.s);
+  const top=scored.slice(0,engMoveCount<=4?2:3);
+  return {m:top[RI(0,top.length-1)].m,book:false};
+}
+function findScriptedCheck(moves){
+  // one desperate lash-out: a check the player can refute by capturing the checker
+  const cands=[];
+  for(const m of moves){
+    if(m.capt||m.castle)continue;
+    const n=apply(st,m);
+    if(!inCheck(n))continue;
+    if(legalMoves(n).length===0)continue;                     // never mate
+    if(isAttacked(n,m.to,'b'))continue;                       // checker must be undefended
+    const refutable=legalMoves(n).some(r=>r.to===m.to&&r.capt);
+    if(refutable)cands.push(m);
+  }
+  cands.sort((a,b)=>VAL[a.piece[1]]-VAL[b.piece[1]]);
+  return cands[0]||null;
+}
+function engineTurn(){
+  if(gameOver)return;
+  phase='engine';engMoveCount++;
+  $('turnhint').textContent=stage>=4?'DeepFish is thinking. The cooling fans are audible on stream.':'DeepFish is thinking…';
+  const moves=legalMoves(st);
+  if(!moves.length){endGame('stalemate-resign');return;}
+  let choice=null, scripted=false;
+  if(!checkBeatDone&&engMoveCount===checkBeatAt){
+    const c=findScriptedCheck(moves);
+    if(c){choice={m:c,book:false};scripted=true;checkBeatDone=true;}
+  }
+  if(!choice)choice=chooseEngineMove(moves);
+  const thinkMs=FAST?90:choice.book?RI(500,900):engineMood>=2?RI(2300,3900):RI(1300,2500);
+  const mood=engMoveCount<3?ENGINE_CALM:engMoveCount<6?ENGINE_WORRIED:engMoveCount<10?ENGINE_PANIC:ENGINE_ACCEPT;
+  setMood(engMoveCount<3?0:engMoveCount<6?1:engMoveCount<10?2:3);
+  if(stage>=3){
+    const logN=FAST?1:RI(2,3);
+    for(let i=0;i<logN;i++)setTimeout(()=>{if(!gameOver)engineSay(mood(),engMoveCount>=6?'bad':'');},(i+1)*(thinkMs/(logN+1)));
+    if(!FAST)setTimeout(()=>{if(!gameOver)engineSay('depth '+RI(28,44)+' · eval '+(-(evalNow+R(0,1.2))).toFixed(1)+' · principal variation withheld from broadcast','sys');},thinkMs*0.45);
+  }
+  const drain=setInterval(()=>{engClock=Math.max(61,engClock-RI(40,150));$('engclock').textContent=fmtClock(engClock);},thinkMs/6);
+  setTimeout(()=>{
+    clearInterval(drain);
+    if(gameOver)return;
+    const matDiff=captures.reduce((s,p)=>s+VAL[p[1]],0)-engCaptures.reduce((s,p)=>s+VAL[p[1]],0);
+    if(playerMoveCount>=resignAt||(matDiff>=16&&playerMoveCount>=10)||(moves.length<4&&playerMoveCount>=9)){
+      endGame('resign');return;
+    }
+    executeEngineMove(choice.m,choice.book,scripted);
+  },thinkMs);
+}
+function executeEngineMove(m,book,scripted){
+  const notation=san(st,m);
+  ghostMove(m,()=>{
+    st=apply(st,m);
+    lastEngineMove=m;lastBlackTo=m.to;
+    if(m.capt){
+      engCaptures.push(m.capt);lastPlayerRecaptureSq=m.to;thock();
+      $('engcaps').textContent=engCaptures.map(p=>GLYPH[p[1]]).join(' ');
+    } else tick();
+    render(m);
+    setBlackMove(playerMoveCount,notation);
+    if(pgnMoves.length){pgnMoves[pgnMoves.length-1].b=notation;pgnMoves[pgnMoves.length-1].bc=m.capt?'Recaptures — the trade is level, the position is not.':(book?'A book reply. The last familiar territory Black will see.':'The move it disliked least.');}
+    if(scripted){
+      say('a','A check — DeepFish lashes out. One attacking move all night, and it chooses now. Watch the reply carefully.');
+      if(stage>=3)engineSay('initiating counterplay. projected success: 3%. initiating anyway.','bad');
+      const k=kingSq(st,'w');const c=cellOf(k);if(c)c.classList.add('checked');
+      setEval(evalNow-R(0.3,0.5),'a flicker of counterplay — watch the reply');
+    } else if(m.capt){
+      if(stage>=2)say(stage>=3?'a':'b','DeepFish recaptures — it had to, and the trade is dead even. Even trades favor whoever has the better position. You may draw your own conclusion.');
+      setEval(evalNow-R(0.05,0.2));
+    } else if(book&&stage<2){
+      say('app',TERMINAL());
+      setEval(evalNow+R(0.05,0.15));
+    } else {
+      if(stage>=2&&Math.random()<0.7)say((stage>=3&&Math.random()<0.6)?'a':'b','<i>'+notation+'</i>. '+ENGINE_COVER());
+      if(Math.random()<0.28&&evalNow>1.5)setEval(evalNow-R(0.15,0.4),'DeepFish finds the most stubborn defense — for now');
+      else setEval(evalNow+R(0.1,0.45));
+    }
+    evalHist.push(evalNow);
+    if(!legalMoves(st).length){endGame('resign');return;}
+    phase='player';sel=null;render(m);showPlayerOptions();
+  });
+}
+
+/* =============================== ENDINGS =============================== */
+function tipKing(){
+  const k=kingSq(st,'b');if(k<0)return;
+  const c=cellOf(k);if(c)c.querySelector('.pc').classList.add('tipping');
+}
+function endGame(kind,mateSan){
+  if(gameOver)return;gameOver=true;phase='over';clearHints();
+  $('turnhint').textContent='1–0. Nobody is leaving.';
+  if(kind==='mate'){
+    banner('CHECKMATE','the strongest engine ever built, mated over the board, in public',{sound:'fanfare',dur:4200});
+    say('a','<b>'+mateSan+'.</b> Checkmate. I have spent my life describing chess games. I will be quoting this one.');
+    engineSay('checkmate confirmed. verified twice. it is, for the record, a beautiful mating pattern. small mercies.','bad');
+  } else if(kind==='stalemate-resign'){
+    banner('DEEPFISH RESIGNS','with stalemate available — it refuses to escape with a draw it did not earn',{sound:'gong',dur:4200});
+    say('arb','Extraordinary. DeepFish had a legal draw by stalemate and has chosen to resign instead. Its message to the arbiter reads: "the result should reflect the game."');
+  } else {
+    banner('DEEPFISH RESIGNS','it can see forty moves ahead — it has verified all forty',{sound:'gong',dur:4200});
+    say('a','DeepFish 17 <b>resigns.</b> To a human eye, Black could have played on for hours. That is precisely the point: it can see how those hours go.');
+    engineSay('resignation submitted. the wording took longer than the decision.','bad');
+    engineSay('good game. I have said that 2,847,391 times. this is the first time it cost me something to mean it.','head');
+  }
+  tipKing();gong();applause(3.4);bumpSpectators(2.4);
+  $('pelo').innerHTML='4013 <small>the strongest rated player, carbon or silicon</small>';
+  $('ptitle').textContent='WORLD CHAMPION';
+  setEval(Math.max(evalNow,12),'1–0');
+  $('engmood').textContent='at peace. mostly.';
+  setTicker(["BREAKING: "+playerName+" defeats DeepFish 17 — first loss in the engine's history …","FIDE confirms the result of 'Game 7' will stand, series or no series …","DeepFish development team: 'we are proud of it. we are also unplugging it for a while.' …","Replay traffic has taken down two chess sites and one Icelandic news portal …"]);
+  career.wins++;saveCareer();
+  confettiBurst();
+  setTimeout(showReport,FAST?400:3600,kind);
+}
+function showReport(kind){
+  const n=playerMoveCount;
+  const acc=(100+captures.length*0.8+checksGiven*1.1+R(1.5,4.2)).toFixed(1);
+  const immortal='The '+(playerName.replace(/^the\s+/i,'').split(' ')[0]||'Challenger')+' Immortal';
+  const matDiff=captures.reduce((s,p)=>s+VAL[p[1]],0)-engCaptures.reduce((s,p)=>s+VAL[p[1]],0);
+  $('endtitle').textContent='1 – 0 · '+immortal;
+  $('endsub').textContent=kind==='mate'?'won by checkmate — over the board, in public, forever':'won by resignation — DeepFish checked all forty moves ahead and declined to attend them';
+  const rows=[
+   ['Result','1–0 · WORLD CHAMPION (BY ACCLAMATION)',1],
+   ['Accuracy',acc+'% (the formula has been asked to double-check)',1],
+   ['Brilliant moves',n+' of '+n,1],
+   ['Blunders','0 (career: 0)',0],
+   ['Material','+'+Math.max(0,matDiff)+' — every trade broke your way',0],
+   ['Intuition alignment',followedIntuition===n?'total — the glow and you agreed all night':followedIntuition+' of '+n+' — the rest, the engines are still checking',0],
+   ['Time used',fmtClock(5400-pClock)+' — DeepFish: '+fmtClock(5400-engClock),0],
+   ['Peak rating','4013 (live world №1)',1],
+   ['Spectators',(spectators>=1e6?(spectators/1e6).toFixed(1)+'M':spectators.toLocaleString())+' — from three, an hour ago',0],
+   ['Career vs DeepFish',career.wins+(career.wins===1?' win':' wins')+', 0 losses',1],
+  ];
+  $('endstats').innerHTML=rows.map(r=>'<span class="k">'+r[0]+'</span><span class="v'+(r[2]?' gold':'')+'">'+r[1]+'</span>').join('');
+  $('endps').innerHTML='P.S. Every move in this game was legal chess and the notation is genuine. Download the PGN and show a chess friend — the game is real, and Black\'s collapse is, as the textbooks say, instructive.<br><br>DeepFish has requested a rematch. It has been retrained since. Its own forecast for the rematch is not public.';
+  drawSpark();
+  $('endmodal').style.display='flex';
+}
+function drawSpark(){
+  const svg=$('spark'),W=360,H=70,pad=6;
+  const max=Math.max(...evalHist,1);
+  const pts=evalHist.map((v,i)=>[(pad+i*(W-2*pad)/Math.max(1,evalHist.length-1)),H-pad-(v/max)*(H-2*pad)]);
+  svg.innerHTML='<polyline points="'+pts.map(p=>p.map(x=>x.toFixed(1)).join(',')).join(' ')+'" fill="none" stroke="#d4af37" stroke-width="2.5"/>'+
+    pts.filter((_,i)=>i%3===0).map(p=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" fill="#f3d27a"/>').join('');
+}
+function pgnText(){
+  const d=new Date(),ds=d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+  let s='[Event "Public Exhibition, Board 7 — later the World Championship, Game 7"]\n[Site "Reykjavík, Iceland"]\n[Date "'+ds+'"]\n[Round "7"]\n[White "'+playerName+'"]\n[Black "DeepFish 17'+(career.ver?'.'+career.ver:'')+' (4012)"]\n[Result "1-0"]\n[WhiteElo "4013"]\n\n';
+  for(const m of pgnMoves){
+    s+=m.n+'. '+m.w+'!! {'+(m.wc||'Brilliant.').replace(/[{}]/g,'')+'} ';
+    if(m.b)s+=m.b+' {'+(m.bc||'Best available.').replace(/[{}]/g,'')+'} ';
+  }
+  s+='1-0';
+  return s;
+}
+
+/* =============================== CONFETTI =============================== */
+function confettiBurst(){
+  const cv=$('confetti'),cx=cv.getContext('2d');
+  cv.width=innerWidth;cv.height=innerHeight;
+  const cols=['#d4af37','#f3d27a','#f2ead8','#a3242e','#ffffff'];
+  const ps=Array.from({length:240},()=>({x:R(0,cv.width),y:R(-cv.height,0),w:R(5,11),h:R(8,16),c:cols[RI(0,4)],vy:R(1.6,4.2),vx:R(-1,1),rot:R(0,6.3),vr:R(-0.12,0.12)}));
+  let t0=null;
+  function frame(ts){
+    if(!t0)t0=ts;
+    cx.clearRect(0,0,cv.width,cv.height);
+    for(const p of ps){p.y+=p.vy;p.x+=p.vx+Math.sin(p.y/34);p.rot+=p.vr;
+      cx.save();cx.translate(p.x,p.y);cx.rotate(p.rot);cx.fillStyle=p.c;cx.fillRect(-p.w/2,-p.h/2,p.w,p.h);cx.restore();}
+    if(ts-t0<(FAST?900:7000))requestAnimationFrame(frame);else cx.clearRect(0,0,cv.width,cv.height);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* =============================== CONTROLS =============================== */
+$('btn-draw').addEventListener('click',()=>{
+  if(gameOver||drawOffered)return;drawOffered=true;
+  if(stage<3){say('app','draw offer received. declined. the position is equal; the forecast is not.');setTimeout(()=>drawOffered=false,6000);return;}
+  say('world','A draw is offered. DeepFish accepts before the offer finishes rendering — the fastest acceptance in recorded chess.');
+  setTimeout(()=>{say('arb','The arbiter <b>voids the draw.</b> Regulation 9.1b requires both players to be worse off than a win. One of them is not. Play continues.');banner('DRAW REFUSED','the arbiter cites the audience, the position, and common sense',{grave:true,dur:2300});setTimeout(()=>drawOffered=false,8000);},FAST?50:1800);
+  engineSay('draw offer detected. accepting. accepting harder. why is the button not working. ARBITER.','bad');
+});
+$('btn-resign').addEventListener('click',()=>{
+  if(gameOver)return;resignClicks++;
+  if(stage<3){say('app','resignation declined. you appear to be winning. please continue.');return;}
+  if(resignClicks===1)say('arb','Motion to resign: <b>denied.</b> Article 5 requires a losing position, and you have failed to provide one.');
+  else if(resignClicks===2)say('arb','Second motion denied. The arbiter notes, gently, that winners cannot resign. This is now case law.');
+  else say('arb','Your continued attempts to resign have been logged in your FIDE file under "psychological warfare."');
+});
+$('btn-settings').addEventListener('click',()=>{$('setmodal').style.display='flex';});
+$('btn-set-close').addEventListener('click',()=>{$('setmodal').style.display='none';});
+function toggleSound(){soundOn=!soundOn;$('btn-sound').textContent=soundOn?'🔊':'🔇';}
+$('btn-sound').addEventListener('click',toggleSound);
+$('btn-sound2').addEventListener('click',toggleSound);
+$('btn-theme').addEventListener('click',()=>{
+  themeIdx=(themeIdx+1)%THEMES.length;
+  document.documentElement.style.setProperty('--sq-l',THEMES[themeIdx][0]);
+  document.documentElement.style.setProperty('--sq-d',THEMES[themeIdx][1]);
+});
+$('btn-pgn').addEventListener('click',()=>{
+  const blob=new Blob([pgnText()],{type:'application/x-chess-pgn'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='game7-'+playerName.toLowerCase().replace(/\W+/g,'-')+'-immortal.pgn';a.click();
+});
+$('btn-copy').addEventListener('click',e=>{
+  navigator.clipboard&&navigator.clipboard.writeText(pgnText());
+  e.target.textContent='Copied — go astonish someone';
+  setTimeout(()=>e.target.textContent='Copy PGN',2500);
+});
+$('btn-study').addEventListener('click',()=>{$('endmodal').style.display='none';});
+$('btn-rematch').addEventListener('click',()=>{career.ver++;saveCareer();location.reload();});
+
+/* =============================== BOOT =============================== */
+function begin(){
+  audio();if(AC&&AC.state==='suspended')AC.resume();
+  playerName=($('namein').value.trim()||'The Challenger').slice(0,24);
+  $('pname').textContent=playerName;
+  $('intro').style.transition='opacity .7s';$('intro').style.opacity='0';
+  setTimeout(()=>$('intro').remove(),FAST?60:720);
+  st=initialState();buildBoard();render();
+  say('app','challenger connected: '+playerName+' · no rating on file · you play White. good luck.');
+  if(career.wins>0)say('app','welcome back. I remember you. I have been retrained since. we will see.');
+  setTicker(['Board №7 · open challenge · DeepFish 17 accepts all comers','current streak: 2,847,391 wins','say gg after']);
+  phase='player';showPlayerOptions();
+}
+$('btn-begin').addEventListener('click',begin);
+$('namein').addEventListener('keydown',e=>{if(e.key==='Enter')begin();});
+if(career.wins>0){
+  const vname='DeepFish 17'+(career.ver?'.'+career.ver:'');
+  $('patchnotes').textContent=vname+' — updated since your last visit: opening book doubled · search depth +8 · its own forecast: "this time will be different"';
+  $('engname').textContent=vname;
+}
+
+/* debug/test hooks */
+window.__gm={
+  auto(){if(phase!=='player')return false;computeIntuition();const m=intuitMove||legal[0];playerMove(m);return true;},
+  rand(){if(phase!=='player')return false;const cand=legal.filter(m=>!m.promo||m.promo==='Q');playerMove(cand[RI(0,cand.length-1)]);return true;},
+  forceCheck(){checkBeatAt=engMoveCount+1;checkBeatDone=false;return checkBeatAt;},
+  loadFen(f){st=parseFEN(f);sel=null;render();phase='player';showPlayerOptions();return sqName(kingSq(st,'w'));},
+  state:()=>st,phase:()=>phase,over:()=>gameOver,moves:()=>playerMoveCount,stage:()=>stage,pgn:pgnText
+};
+})();
+</script>
+</body>
+</html>
